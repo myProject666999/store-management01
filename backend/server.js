@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const multer = require('multer');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const XLSX = require('xlsx');
 
 const { users, discountBills, billDetails, preExpiredGoods, messages } = require('./data/mockData');
 
@@ -303,10 +304,17 @@ app.post('/deletePreExpired', (req, res) => {
   });
 });
 
-app.get('/message', (req, res) => {
+app.post('/message', (req, res) => {
+  const { roomid } = req.body;
+  
+  let filteredMessages = messages;
+  if (roomid) {
+    filteredMessages = messages.filter(msg => msg.roomid === roomid);
+  }
+  
   res.json({
     status: 0,
-    data: messages.slice(-50)
+    data: filteredMessages.slice(-50)
   });
 });
 
@@ -327,6 +335,80 @@ app.post('/file/uploadimg', upload.single('file'), (req, res) => {
       name: req.file.originalname
     }
   });
+});
+
+app.get('/template/preexpired', (req, res) => {
+  const templateData = [
+    ['条码', 'SKU', '商品名称', '生产日期', '过期日期', '保质期(天)', '剩余保质期(天)', '当前库存'],
+    ['BAR0000000001', 'SKU00000001', '示例商品1', '2024-01-01', '2024-12-31', 365, 30, 100],
+    ['BAR0000000002', 'SKU00000002', '示例商品2', '2024-02-01', '2024-11-30', 300, 15, 50]
+  ];
+  
+  const ws = XLSX.utils.aoa_to_sheet(templateData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '临期品模板');
+  
+  const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename=preexpired_goods_template.xlsx');
+  res.send(buffer);
+});
+
+app.post('/import/preexpired', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.json({
+      status: 1,
+      message: '请选择要导入的文件'
+    });
+  }
+  
+  try {
+    const workbook = XLSX.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
+    jsonData.forEach((row, index) => {
+      if (index === 0) return;
+      
+      const barcode = row['条码'] || row['barcode'] || '';
+      const sku = row['SKU'] || row['sku'] || '';
+      const goodsName = row['商品名称'] || row['goods_name'] || '';
+      
+      if (barcode || sku || goodsName) {
+        const newItem = {
+          id: uuidv4(),
+          barcode: String(barcode),
+          sku: String(sku),
+          goods_name: String(goodsName),
+          hd_shop_code: 'SHOP001',
+          produce_date: row['生产日期'] || row['produce_date'] || dateStr,
+          expiry_date: row['过期日期'] || row['expiry_date'] || dateStr,
+          shelf_life: parseInt(row['保质期(天)'] || row['shelf_life'] || 365),
+          last_shelf_life: parseInt(row['剩余保质期(天)'] || row['last_shelf_life'] || 30),
+          stock: parseInt(row['当前库存'] || row['stock'] || 0),
+          created_at: dateStr,
+          updated_at: dateStr
+        };
+        preExpiredGoods.unshift(newItem);
+      }
+    });
+    
+    res.json({
+      status: 0,
+      message: '导入成功'
+    });
+  } catch (err) {
+    console.error('Import error:', err);
+    res.json({
+      status: 1,
+      message: '导入失败：' + err.message
+    });
+  }
 });
 
 const globalUsers = {};

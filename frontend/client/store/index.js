@@ -75,8 +75,7 @@ const actions = {
         commonAjax({
             method: 'post',
             url: ajaxUrl.uploadImg,
-            data: payload,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            data: payload
         })
         .then((res) => {
             if (res.status === 0) {

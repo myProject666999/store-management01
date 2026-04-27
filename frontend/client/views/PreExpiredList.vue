@@ -486,7 +486,14 @@ export default {
             this.$refs.form.resetFields()
         },
         tplDownload () {
-            remote.getCurrentWebContents().downloadURL(ajaxUrl.preExpiredListTpl)
+            if (remote) {
+                remote.getCurrentWebContents().downloadURL(ajaxUrl.preExpiredListTpl)
+            } else {
+                const link = document.createElement('a')
+                link.href = ajaxUrl.preExpiredListTpl
+                link.download = 'preexpired_goods_template.xlsx'
+                link.click()
+            }
         },
         dataImport () {
             this.dialogImportVisible = this.dialogImportVisible ? false : true

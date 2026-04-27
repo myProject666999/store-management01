@@ -39,22 +39,22 @@
                         <div class="form-td">
                             <el-form-item
                                 :prop="'data.' + index + '.produce_date'"
-                                :rules="{  type: 'date', required: true, message: $t('selectGroup', [$t('table.producedDate')]), trigger: 'blur,change' }">
+                                :rules="{ required: true, message: $t('selectGroup', [$t('table.producedDate')]), trigger: 'blur,change' }">
                                 <el-date-picker
                                 v-model="item.produce_date"
                                 :placeholder="$t('table.producedDate')"
-                                align="right" class="m-date-picker" format="YYYY-MM-DD" value-format="YYYY-MM-DD">
+                                align="right" class="m-date-picker" format="YYYY-MM-DD">
                                 </el-date-picker>
                             </el-form-item>
                         </div>
                         <div class="form-td">
                             <el-form-item
                                 :prop="'data.' + index + '.expiry_date'"
-                                :rules="{  type: 'date', required: true, message: $t('selectGroup', [$t('table.overdueDate')]), trigger: 'blur,change' }">
+                                :rules="{ required: true, message: $t('selectGroup', [$t('table.overdueDate')]), trigger: 'blur,change' }">
                                 <el-date-picker
                                 v-model="item.expiry_date"
                                 :placeholder="$t('table.overdueDate')"
-                                align="right" class="m-date-picker" format="YYYY-MM-DD" value-format="YYYY-MM-DD">
+                                align="right" class="m-date-picker" format="YYYY-MM-DD">
                                 </el-date-picker>
                             </el-form-item>
                         </div>
@@ -121,8 +121,8 @@ const tplData = {
     barcode: '',
     sku: '',
     goods_name: '',
-    produce_date: '',
-    expiry_date: '',
+    produce_date: null,
+    expiry_date: null,
     shelf_life: '',
     last_shelf_life: '',
     currentNumber: ''
@@ -152,22 +152,39 @@ export default {
         }
     },
     methods: {
+        formatDate (date) {
+            if (!date) return ''
+            const d = new Date(date)
+            const year = d.getFullYear()
+            const month = String(d.getMonth() + 1).padStart(2, '0')
+            const day = String(d.getDate()).padStart(2, '0')
+            return `${year}-${month}-${day}`
+        },
         initFormData (val) {
             const data = JSON.parse(JSON.stringify(val))
             data.forEach((item) => {
-                item.produce_date = new Date(item.produce_date)
-                item.expiry_date = new Date(item.expiry_date)
+                if (item.produce_date) {
+                    item.produce_date = new Date(item.produce_date)
+                }
+                if (item.expiry_date) {
+                    item.expiry_date = new Date(item.expiry_date)
+                }
             })
             return data.length > 0 ? data : [JSON.parse(JSON.stringify(tplData))]
         },
         save () {
             this.$refs['form'].validate((valid) => {
                 if (valid) {
+                    const dataToSave = JSON.parse(JSON.stringify(this.form.data))
+                    dataToSave.forEach((item) => {
+                        item.produce_date = this.formatDate(item.produce_date)
+                        item.expiry_date = this.formatDate(item.expiry_date)
+                    })
                     commonAjax({
                         method: 'post',
                         url: this.isEdit ? ajaxUrl.editPreExpired : ajaxUrl.addPreExpired,
                         data: {
-                            temporaryGoods: this.form.data
+                            temporaryGoods: dataToSave
                         },
                         responseType: 'json'
                     })

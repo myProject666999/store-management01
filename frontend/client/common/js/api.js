@@ -19,8 +19,8 @@ const ajaxUrl = {
     addPreExpired: domain + 'addPreExpired', // 添加门店临期品
     editPreExpired: domain + 'editPreExpired', // 编辑门店临期品
     deletePreExpired: domain + 'deletePreExpired', // 删除门店临期品
-    preExpiredListTpl: 'http://a.wzhchina.egocdn.com/template/preexipry_goods_export_template.xls', // 门店临期品记录列表模板
-    preExpiredImportUrl: 'https://jsonplaceholder.typicode.com/posts/', // 门店临期品记录导入
+    preExpiredListTpl: domain + 'template/preexpired', // 门店临期品记录列表模板
+    preExpiredImportUrl: domain + 'import/preexpired', // 门店临期品记录导入
     // socket.io地址
     // 获取历史信息
     message: socketUrl + '/message',
